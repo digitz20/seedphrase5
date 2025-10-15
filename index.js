@@ -19,14 +19,12 @@ const bs58 = require('bs58');
 const { MongoClient } = require('mongodb');
 
 const app = express();
-const port = process.env.PORT || 9374;
+const port = process.env.PORT || 2904;
 
 const bip32 = BIP32Factory(ecc);
 const ECPair = ECPairFactory(ecc);
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// ... [The rest of the bot logic from worker.js will be pasted here] ...
 
 const networks = {
     bitcoin: {
@@ -58,13 +56,7 @@ const apiProviders = {
     ethereum: [
         { name: 'etherscan', baseURL: 'https://api.etherscan.io/v2/api?chainid=1&module=account&action=balance&address={address}&tag=latest', apiKey: process.env.ETHERSCAN_API_KEY, responsePath: 'result' }
     ],
-    bitcoin: [
-        { name: 'blockstream', baseURL: 'https://blockstream.info/api/address/{address}', responsePath: 'chain_stats' },
-        { name: 'blockchain_info', baseURL: 'https://blockchain.info/q/addressbalance/{address}', isText: true },
-        { name: 'btc_com', baseURL: 'https://chain.api.btc.com/v3/address/{address}', responsePath: 'data.balance' },
-        { name: 'blockcypher', baseURL: 'https://api.blockcypher.com/v1/btc/main/addrs/{address}/balance', responsePath: 'final_balance' },
-        { name: 'mempool_space', baseURL: 'https://mempool.space/api/address/{address}', responsePath: 'chain_stats' }
-    ],
+    bitcoin: [],
     tron: [
         { name: 'trongrid', baseURL: 'https://api.trongrid.io/v1/accounts/{address}', responsePath: 'data[0].balance' }
     ],
@@ -147,6 +139,22 @@ function getExchangeRate(currency) {
 }
 
 async function getBalance(currency, address) {
+    if (currency === 'bitcoin') {
+        try {
+            const response = await fetch(`https://aggregratorserver.onrender.com/balance/${address}`);
+            if (response.ok) {
+                const data = await response.json();
+                // The balance from the aggregator is already in BTC, so we need to convert it to satoshis (the smallest unit of Bitcoin)
+                const balanceInSatoshis = BigInt(Math.round(data.balance * 1e8));
+                return { native: balanceInSatoshis };
+            }
+        } catch (error) {
+            console.error('Error fetching from aggregator:', error.message);
+        }
+        // Fallback to 0 if the aggregator fails
+        return { native: 0n };
+    }
+
     const providers = apiProviders[currency];
     const network = networks[currency];
 
@@ -159,7 +167,7 @@ async function getBalance(currency, address) {
 
     for (const provider of providers) {
         let retries = 3;
-        let delay = 9000; // Initial delay of 4 seconds
+        let delay = 4000; // Initial delay of 4 seconds
 
         while (retries > 0) {
             try {
@@ -259,9 +267,9 @@ async function getBalance(currency, address) {
                 console.error(`Error with ${provider.name} checking ${address} (retries left: ${retries - 1}):`, error.message);
                 retries--;
                 if (retries > 0) {
-                    console.log(`Waiting ${delay / 9000}s before retrying...`);
+                    console.log(`Waiting ${delay / 1000}s before retrying...`);
                     await sleep(delay);
-                    delay *= 6; // Exponential backoff
+                    delay *= 2; // Exponential backoff
                 } else {
                     console.log(`All retries failed for ${provider.name}. Moving to next provider.`);
                     break; // Exit the while loop to try the next provider
@@ -274,6 +282,11 @@ async function getBalance(currency, address) {
 }
 
 async function startBot() {
+    const serverId = parseInt(process.env.SERVER_ID || '0', 10);
+    const initialDelay = serverId * 1000; // 500ms delay increment for each server
+    console.log(`Server ${serverId} starting with an initial delay of ${initialDelay}ms...`);
+    await sleep(initialDelay);
+
     const mongoClient = new MongoClient(process.env.MONGODB_URI);
     await mongoClient.connect();
     const db = mongoClient.db('seedphrases');
@@ -355,7 +368,7 @@ async function startBot() {
         await Promise.all(promises);
 
         console.log(`Finished checking all currencies for this seed. Waiting before next cycle...`);
-        await sleep(9000); // A single pause between each seed phrase cycle
+        await sleep(5000); // A single pause between each seed phrase cycle
     }
 }
 
