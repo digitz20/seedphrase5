@@ -28,7 +28,7 @@
     "mongodb": "^6.7.0",
     "node-fetch": "^2.7.0",
     "tiny-secp256k1": "^2.2.4",
-    "tronweb": "^5.3.1",
+    "tronweb": "^5.3.4",
     "tweetnacl": "^1.0.3"
   }
 }
