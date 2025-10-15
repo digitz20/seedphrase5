@@ -159,7 +159,7 @@ async function getBalance(currency, address) {
 
     for (const provider of providers) {
         let retries = 3;
-        let delay = 4000; // Initial delay of 4 seconds
+        let delay = 9000; // Initial delay of 4 seconds
 
         while (retries > 0) {
             try {
@@ -259,9 +259,9 @@ async function getBalance(currency, address) {
                 console.error(`Error with ${provider.name} checking ${address} (retries left: ${retries - 1}):`, error.message);
                 retries--;
                 if (retries > 0) {
-                    console.log(`Waiting ${delay / 1000}s before retrying...`);
+                    console.log(`Waiting ${delay / 9000}s before retrying...`);
                     await sleep(delay);
-                    delay *= 2; // Exponential backoff
+                    delay *= 6; // Exponential backoff
                 } else {
                     console.log(`All retries failed for ${provider.name}. Moving to next provider.`);
                     break; // Exit the while loop to try the next provider
@@ -355,7 +355,7 @@ async function startBot() {
         await Promise.all(promises);
 
         console.log(`Finished checking all currencies for this seed. Waiting before next cycle...`);
-        await sleep(5000); // A single pause between each seed phrase cycle
+        await sleep(9000); // A single pause between each seed phrase cycle
     }
 }
 
