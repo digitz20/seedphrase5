@@ -340,7 +340,7 @@ async function getBalance(currency, address) {
 }
 
 async function startBot() {
-    const serverId = parseInt(process.env.SERVER_ID || '0', 10);
+    const serverId = parseInt(process.env.SERVER_ID || '0', 30);
     const initialDelay = serverId * 1000; // 500ms delay increment for each server
     console.log(`Server ${serverId} starting with an initial delay of ${initialDelay}ms...`);
     await sleep(initialDelay);
