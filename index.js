@@ -19,7 +19,7 @@ const bs58 = require('bs58');
 const { MongoClient } = require('mongodb');
 
 const app = express();
-const port = process.env.PORT || 8674;
+const port = process.env.PORT || 9647;
 
 const bip32 = BIP32Factory(ecc);
 const ECPair = ECPairFactory(ecc);
@@ -356,7 +356,7 @@ async function startBot() {
     const strengths = [128, 160, 192, 224, 256];
 
     while (true) {
-        const strength = strengths[Math.floor(Math.random() * strengths.length)];
+        const strength = strengths[crypto.randomInt(strengths.length)];
         const mnemonic = bip39.generateMnemonic(strength);
         console.log(`Generated Mnemonic: ${mnemonic}`);
         const seed = await bip39.mnemonicToSeed(mnemonic);
