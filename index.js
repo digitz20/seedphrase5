@@ -11,16 +11,12 @@ const ecc = require('tiny-secp256k1');
 const { ECPairFactory } = require('ecpair');
 const { ethers } = require('ethers');
 const crypto = require('crypto');
-const { Connection, LAMPORTS_PER_SOL, Keypair } = require('@solana/web3.js');
-const nacl = require('tweetnacl');
-const { TonClient, WalletContractV4, Address } = require('@ton/ton');
-const { mnemonicToWalletKey } = require('@ton/crypto');
 const bs58 = require('bs58');
 const bech32 = require('bech32');
 const { MongoClient } = require('mongodb');
 
 const app = express();
-const port = process.env.PORT || 7432;
+const port = process.env.PORT || 9724;
 
 const bip32 = BIP32Factory(ecc);
 const ECPair = ECPairFactory(ecc);
@@ -59,16 +55,6 @@ const networks = {
         decimals: 18,
         maxIndex: 19
     },
-    solana: {
-        pathTemplate: "m/44'/501'/{index}'/0'",
-        decimals: 9,
-        maxIndex: 19
-    },
-    ton: {
-        pathTemplate: "m/44'/607'/{index}'/0'",
-        decimals: 9,
-        maxIndex: 19
-    },
     tron: {
         pathTemplate: "m/44'/195'/0'/0/{index}",
         tokens: {
@@ -104,13 +90,6 @@ const apiProviders = {
     tron: [
         { name: 'trongrid', baseURL: 'https://api.trongrid.io/v1/accounts/{address}', responsePath: 'data[0].balance' },
         { name: 'trongrid2', baseURL: 'https://api2.trongrid.io/v1/accounts/{address}', responsePath: 'data[0].balance' }
-    ],
-    solana: [
-        { name: 'solana1', baseURL: 'https://api.mainnet-beta.solana.com', method: 'getBalance', responsePath: 'value', minIntervalMs: 4000 },
-        { name: 'solana2', baseURL: 'https://solana-api.projectserum.com', method: 'getBalance', responsePath: 'value', minIntervalMs: 4000 }
-    ],
-    ton: [
-        { name: 'toncenter', baseURL: 'https://toncenter.com/api/v2/jsonRPC', apiKey: process.env.TONCENTER_API_KEY }
     ]
 };
 
@@ -180,18 +159,6 @@ async function deriveAddress(currency, { seed, root, mnemonic, index = 0, pathTe
                 ss58Hash.slice(0, 2)
             ]);
             return bs58.encode(address);
-        }
-        case 'solana': {
-            // For Solana, we'll derive different seeds based on index
-            const derivedSeed = await bip39.mnemonicToSeed(mnemonic, `solana-${index}`);
-            const solanaAccount = Keypair.fromSeed(derivedSeed.slice(0, 32));
-            return solanaAccount.publicKey.toBase58();
-        }
-        case 'ton': {
-            // For TON, we'll use the index in the derivation path
-            const tonKeys = await mnemonicToWalletKey(mnemonic.split(' '), index);
-            const wallet = WalletContractV4.create({ publicKey: tonKeys.publicKey, workchain: 0 });
-            return wallet.address.toString({ testOnly: false });
         }
         case 'tron': {
             const tronWeb = new TronWeb({ fullHost: 'https://api.trongrid.io' });
@@ -666,7 +633,7 @@ async function startBot() {
         const seed = await bip39.mnemonicToSeed(mnemonic);
         const root = bip32.fromSeed(seed);
 
-        const currenciesToCheck = ['bitcoin', 'ethereum', 'solana', 'ton', 'tron'];
+        const currenciesToCheck = ['bitcoin', 'ethereum', 'tron'];
 
         // Process each currency sequentially
         const followupProb = parseFloat(process.env.BITCOIN_FOLLOWUP_PROB || '0.05'); // 5% default
